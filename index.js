@@ -21,17 +21,19 @@ const jsonTemplate = {
  * @param {number} redirects The amount of redirects followed
  * @returns {Promise} Resolves into the headers
  */
-function getHeaders(location, redirects) {
+function getHeaders (location, redirects) {
   if (redirects > 20) {
     throw new Error('Too many redirects.')
   }
 
   return new Promise((resolve) => {
+    // parse the url so we can use it in our request
     const parsed = url.parse(location)
-    var options = {
-      method: 'HEAD',
+
+    const options = {
+      method: 'HEAD', // we only need the headers
       hostname: parsed.hostname,
-      port: 80,
+      port: parsed.port,
       path: parsed.path
     }
     https.request(options, (res) => {
@@ -51,8 +53,7 @@ function getHeaders(location, redirects) {
  *
  * @returns {undefined}
  */
-function updateDate() {
-  console.log('updating')
+function updateDate () {
   return getHeaders(streamUrl).then((headers) => {
     // last modified of the mp3 is of course the updateDate of the broadcast
     jsonTemplate.updateDate = new Date(headers['last-modified'])
