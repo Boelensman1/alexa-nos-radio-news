@@ -1,0 +1,5 @@
+# Dependency directory
+node_modules
+
+# no need to commit package lock as we only have dev dep
+package-lock.json
