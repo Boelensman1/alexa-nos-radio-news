@@ -1,8 +1,9 @@
 const http = require('http')
+const https = require('https') // for the requests
 const url = require('url')
 
 // the location of the last nos radio news broadcast
-const streamUrl = 'http://download.omroep.nl/nos/radionieuws/nosnieuws_bulalg.mp3'
+const streamUrl = 'https://download.omroep.nl/nos/radionieuws/nosnieuws_bulalg.mp3'
 
 // Template of what will be returned,
 // is modified by updateDate and send on every request
@@ -33,7 +34,7 @@ function getHeaders(location, redirects) {
       port: 80,
       path: parsed.path
     }
-    http.request(options, function (res) {
+    https.request(options, (res) => {
       if (res.headers.location) {
         // redirect!
         if (!redirects) { redirects = 0 }
