@@ -66,6 +66,8 @@ function updateDate () {
 setInterval(() => {
   updateDate()
 }, 1 * 60 * 1000) // amount of milliseconds in 1 minute
+
+// update the date now
 updateDate()
 
 // create the server
