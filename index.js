@@ -57,15 +57,15 @@ function updateDate () {
   return getHeaders(streamUrl).then((headers) => {
     // last modified of the mp3 is of course the updateDate of the broadcast
     jsonTemplate.updateDate = new Date(headers['last-modified'])
-    // why not use the date as the unique identifier too, date's are unique
+    // why not use the date as the unique identifier too, dates are unique
     jsonTemplate.uid = jsonTemplate.updateDate
   })
 }
 
-// update the date every 5 minutes
+// update the date every minute
 setInterval(() => {
   updateDate()
-}, 5 * 60 * 1000) // amount of seconds in 5 minutes
+}, 1 * 60 * 1000) // amount of milliseconds in 1 minute
 updateDate()
 
 // create the server
