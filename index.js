@@ -55,37 +55,34 @@ function getHeaders(location, redirects) {
  *
  * @returns {undefined}
  */
-async function updateDate() {
+async function getJson() {
   const streamUrlHex64 = await x(
     'https://www.nporadio1.nl/gemist',
     '.js-playlist-latest-news@data-js-source',
   )
   const streamUrl = Buffer.from(streamUrlHex64, 'base64').toString()
 
-  return getHeaders(streamUrl).then((headers) => {
+  const headers = await getHeaders(streamUrl)
+  return {
+    ...jsonTemplate,
     // last modified of the mp3 is of course the updateDate of the broadcast
-    jsonTemplate.updateDate = new Date(headers['last-modified'])
+    updateDate: new Date(headers['last-modified']),
     // why not use the date as the unique identifier too, dates are unique
-    jsonTemplate.uid = jsonTemplate.updateDate
-    jsonTemplate.streamUrl = streamUrl
-  })
+    uid: jsonTemplate.updateDate,
+    streamUrl,
+  }
 }
 
-// update the date every minute
-setInterval(() => {
-  updateDate()
-}, 1 * 60 * 1000) // amount of milliseconds in 1 minute
-
 async function main() {
-  // update the date now
-  await updateDate()
-
   // create the server
   const port = process.env.PORT || 8080
   http
-    .createServer((req, res) => {
+    .createServer(async (req, res) => {
+      // get the latest news
+      const json = await getJson()
+
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.write(JSON.stringify(jsonTemplate, null, 2))
+      res.write(JSON.stringify(json, null, 2))
       res.end()
     })
     .listen(port)
