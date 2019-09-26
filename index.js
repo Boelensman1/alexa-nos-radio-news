@@ -8,7 +8,7 @@ const x = require('x-ray')()
 const jsonTemplate = {
   titleText: 'N.O.S. Radio News',
   mainText: '',
-  redirectionUrl: 'http://nos.nl/nieuws/'
+  redirectionUrl: 'http://nos.nl/nieuws/',
 }
 
 /**
@@ -18,7 +18,7 @@ const jsonTemplate = {
  * @param {number} redirects The amount of redirects followed
  * @returns {Promise} Resolves into the headers
  */
-function getHeaders (location, redirects) {
+function getHeaders(location, redirects) {
   if (redirects > 20) {
     throw new Error('Too many redirects.')
   }
@@ -31,16 +31,21 @@ function getHeaders (location, redirects) {
       method: 'HEAD', // we only need the headers
       hostname: parsed.hostname,
       port: parsed.port,
-      path: parsed.path
+      path: parsed.path,
     }
-    https.request(options, (res) => {
-      if (res.headers.location) {
-        // redirect!
-        if (!redirects) { redirects = 0 }
-        return resolve(getHeaders(res.headers.location, redirects + 1))
-      }
-      resolve(res.headers)
-    }).end()
+    https
+      .request(options, (res) => {
+        if (res.headers.location) {
+          // redirect!
+          if (!redirects) {
+            redirects = 0
+          }
+          resolve(getHeaders(res.headers.location, redirects + 1))
+          return
+        }
+        resolve(res.headers)
+      })
+      .end()
   })
 }
 
@@ -50,16 +55,19 @@ function getHeaders (location, redirects) {
  *
  * @returns {undefined}
  */
-async function updateDate () {
-  const streamUrlHex64 = await x('https://www.nporadio1.nl/gemist', '.js-playlist-latest-news@data-js-source')
+async function updateDate() {
+  const streamUrlHex64 = await x(
+    'https://www.nporadio1.nl/gemist',
+    '.js-playlist-latest-news@data-js-source',
+  )
   const streamUrl = Buffer.from(streamUrlHex64, 'base64').toString()
 
   return getHeaders(streamUrl).then((headers) => {
     // last modified of the mp3 is of course the updateDate of the broadcast
     jsonTemplate.updateDate = new Date(headers['last-modified'])
     // why not use the date as the unique identifier too, dates are unique
-    jsonTemplate.uid = jsonTemplate.updateDate,
-    jsonTemplate.streamUrl= streamUrl
+    jsonTemplate.uid = jsonTemplate.updateDate
+    jsonTemplate.streamUrl = streamUrl
   })
 }
 
@@ -69,17 +77,20 @@ setInterval(() => {
 }, 1 * 60 * 1000) // amount of milliseconds in 1 minute
 
 async function main() {
-// update the date now
-await updateDate()
+  // update the date now
+  await updateDate()
 
-// create the server
-const port = process.env.PORT || 8080
-http.createServer((req, res) => {
-  res.writeHead(200, {'Content-Type': 'application/json'})
-  res.write(JSON.stringify(jsonTemplate, null, 2))
-  res.end()
-}).listen(port)
-console.log('Server listening on port', port)
+  // create the server
+  const port = process.env.PORT || 8080
+  http
+    .createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.write(JSON.stringify(jsonTemplate, null, 2))
+      res.end()
+    })
+    .listen(port)
+  // eslint-disable-next-line no-console
+  console.log('Server listening on port', port)
 }
 
 main()
