@@ -1,16 +1,13 @@
 const http = require('http')
 const https = require('https') // for the requests
 const url = require('url')
-
-// the location of the last nos radio news broadcast
-const streamUrl = 'https://download.omroep.nl/nos/radionieuws/nosnieuws_bulalg.mp3'
+const x = require('x-ray')()
 
 // Template of what will be returned,
 // is modified by updateDate and send on every request
 const jsonTemplate = {
   titleText: 'N.O.S. Radio News',
   mainText: '',
-  streamUrl: streamUrl,
   redirectionUrl: 'http://nos.nl/nieuws/'
 }
 
@@ -53,12 +50,16 @@ function getHeaders (location, redirects) {
  *
  * @returns {undefined}
  */
-function updateDate () {
+async function updateDate () {
+  const streamUrlHex64 = await x('https://www.nporadio1.nl/gemist', '.js-playlist-latest-news@data-js-source')
+  const streamUrl = Buffer.from(streamUrlHex64, 'base64').toString()
+
   return getHeaders(streamUrl).then((headers) => {
     // last modified of the mp3 is of course the updateDate of the broadcast
     jsonTemplate.updateDate = new Date(headers['last-modified'])
     // why not use the date as the unique identifier too, dates are unique
-    jsonTemplate.uid = jsonTemplate.updateDate
+    jsonTemplate.uid = jsonTemplate.updateDate,
+    jsonTemplate.streamUrl= streamUrl
   })
 }
 
@@ -67,8 +68,9 @@ setInterval(() => {
   updateDate()
 }, 1 * 60 * 1000) // amount of milliseconds in 1 minute
 
+async function main() {
 // update the date now
-updateDate()
+await updateDate()
 
 // create the server
 const port = process.env.PORT || 8080
@@ -78,3 +80,6 @@ http.createServer((req, res) => {
   res.end()
 }).listen(port)
 console.log('Server listening on port', port)
+}
+
+main()
