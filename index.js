@@ -4,8 +4,8 @@ const url = require('url')
 const x = require('x-ray')()
 
 // Template of what will be returned,
-// is modified by updateDate and send on every request
-const jsonTemplate = {
+// is modified by updateJson and send on every request
+let json = {
   titleText: 'N.O.S. Radio News',
   mainText: '',
   redirectionUrl: 'http://nos.nl/nieuws/',
@@ -49,13 +49,20 @@ function getHeaders(location, redirects) {
   })
 }
 
+let latestUpdate = new Date(0)
+
 /**
  * Fetch the last modified date from the nos servers
  * and use it as the updateDate in the json
  *
  * @returns {undefined}
  */
-async function getJson() {
+async function updateJson() {
+  // don't update if we have fetched within the last minute
+  if (Date.now() - latestUpdate < 1 * 60 * 1000) {
+    return
+  }
+  latestUpdate = Date.now()
   const streamUrlHex64 = await x(
     'https://www.nporadio1.nl/gemist',
     '.js-playlist-latest-news@data-js-source',
@@ -63,12 +70,12 @@ async function getJson() {
   const streamUrl = Buffer.from(streamUrlHex64, 'base64').toString()
 
   const headers = await getHeaders(streamUrl)
-  return {
-    ...jsonTemplate,
+  json = {
+    ...json,
     // last modified of the mp3 is of course the updateDate of the broadcast
     updateDate: new Date(headers['last-modified']),
     // why not use the date as the unique identifier too, dates are unique
-    uid: jsonTemplate.updateDate,
+    uid: new Date(headers['last-modified']),
     streamUrl,
   }
 }
@@ -77,9 +84,9 @@ async function main() {
   // create the server
   const port = process.env.PORT || 8080
   http
-    .createServer(async (req, res) => {
+    .createServer(async (_req, res) => {
       // get the latest news
-      const json = await getJson()
+      await updateJson()
 
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.write(JSON.stringify(json, null, 2))
