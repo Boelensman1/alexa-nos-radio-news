@@ -1,4 +1,6 @@
 const http = require('http')
+
+const fetch = require('node-fetch')
 const x = require('x-ray')()
 
 // Template of what will be returned,
@@ -16,11 +18,14 @@ const jsonTemplate = {
  * @returns {Promise<object>}
  */
 async function getJson() {
-  const streamUrlHex64 = await x(
+  const audioUrlHex64 = await x(
     'https://www.nporadio1.nl/gemist',
     '.js-playlist-latest-news@data-js-source',
   )
-  const streamUrl = Buffer.from(streamUrlHex64, 'base64').toString()
+  const audioUrl = Buffer.from(audioUrlHex64, 'base64').toString()
+  const streamUrl = await fetch(audioUrl, { redirect: 'manual' }).then((res) =>
+    res.headers.get('location'),
+  )
 
   return {
     ...jsonTemplate,
