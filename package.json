@@ -6,10 +6,13 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["alexa"],
+  "keywords": [
+    "alexa"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "node-fetch": "^2.6.0",
     "x-ray": "^2.3.4"
   },
   "devDependencies": {

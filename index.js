@@ -1,4 +1,5 @@
 const http = require('http')
+const fetch = require('node-fetch')
 const x = require('x-ray')()
 
 // Template of what will be returned,
@@ -8,6 +9,8 @@ const jsonTemplate = {
   mainText: '',
   redirectionUrl: 'http://nos.nl/nieuws/',
 }
+
+let audioFile = ''
 
 /**
  * Fetch the last modified date from the nos servers
@@ -20,7 +23,9 @@ async function getJson() {
     'https://www.nporadio1.nl/gemist',
     '.js-playlist-latest-news@data-js-source',
   )
-  const streamUrl = Buffer.from(streamUrlHex64, 'base64').toString()
+  const audioUrl = Buffer.from(streamUrlHex64, 'base64').toString()
+  audioFile = await fetch(audioUrl).then((res) => res.buffer())
+
 
   return {
     ...jsonTemplate,
@@ -28,7 +33,7 @@ async function getJson() {
     updateDate: Date.now(),
     // why not use the date as the unique identifier too, dates are unique
     uid: Date.now(),
-    streamUrl,
+    streamUrl: '/stream',
   }
 }
 
@@ -40,9 +45,23 @@ async function main() {
       // get the latest news
       const json = await getJson()
 
-      res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.write(JSON.stringify(json, null, 2))
-      res.end()
+      switch (req.url) {
+        case '/':
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.write(JSON.stringify(json, null, 2))
+          res.end()
+          break
+        case '/stream':
+          res.writeHead(200, { 'Content-Type': 'audio/mpeg' })
+          res.write(audioFile, 'binary')
+          res.end(null, 'binary')
+          break
+        default:
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.write(JSON.stringify({ error: 'unknown endpoint' }, null, 2))
+          res.end()
+          break
+      }
     })
     .listen(port)
   // eslint-disable-next-line no-console
