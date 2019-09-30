@@ -11,7 +11,7 @@ const jsonTemplate = {
 }
 
 let audioFile = ''
-let lastUpdate = new Date()
+let lastUpdate = new Date(0)
 
 /**
  * Fetch the last modified date from the nos servers
@@ -20,16 +20,18 @@ let lastUpdate = new Date()
  * @returns {Promise<object>}
  */
 async function getJson() {
-  const streamUrlHex64 = await x(
-    'https://www.nporadio1.nl/gemist',
-    '.js-playlist-latest-news@data-js-source',
-  )
-  const audioUrl = Buffer.from(streamUrlHex64, 'base64').toString()
-  const newAudioFile = await fetch(audioUrl).then((res) => res.buffer())
-  if (newAudioFile.length > 100) {
-    // check if succesfully fetched
-    audioFile = newAudioFile
-    lastUpdate = new Date()
+  if (Date.now() - lastUpdate > 1 * 60 * 1000) {
+    const streamUrlHex64 = await x(
+      'https://www.nporadio1.nl/gemist',
+      '.js-playlist-latest-news@data-js-source',
+    )
+    const audioUrl = Buffer.from(streamUrlHex64, 'base64').toString()
+    const newAudioFile = await fetch(audioUrl).then((res) => res.buffer())
+    if (newAudioFile.length > 100) {
+      // check if succesfully fetched
+      audioFile = newAudioFile
+      lastUpdate = new Date()
+    }
   }
 
   return {
