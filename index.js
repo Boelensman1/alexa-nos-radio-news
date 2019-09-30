@@ -11,6 +11,7 @@ const jsonTemplate = {
 }
 
 let audioFile = ''
+let lastUpdate = new Date()
 
 /**
  * Fetch the last modified date from the nos servers
@@ -24,15 +25,19 @@ async function getJson() {
     '.js-playlist-latest-news@data-js-source',
   )
   const audioUrl = Buffer.from(streamUrlHex64, 'base64').toString()
-  audioFile = await fetch(audioUrl).then((res) => res.buffer())
-
+  const newAudioFile = await fetch(audioUrl).then((res) => res.buffer())
+  if (newAudioFile.length > 100) {
+    // check if succesfully fetched
+    audioFile = newAudioFile
+    lastUpdate = new Date()
+  }
 
   return {
     ...jsonTemplate,
     // last modified is now
-    updateDate: Date.now(),
+    updateDate: lastUpdate.toISOString(),
     // why not use the date as the unique identifier too, dates are unique
-    uid: Date.now(),
+    uid: lastUpdate,
     streamUrl: '/stream',
   }
 }
@@ -42,11 +47,10 @@ async function main() {
   const port = process.env.PORT || 8080
   http
     .createServer(async (req, res) => {
-      // get the latest news
-      const json = await getJson()
-
       switch (req.url) {
         case '/':
+          // get the latest news
+          const json = await getJson() // eslint-disable-line no-case-declarations
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.write(JSON.stringify(json, null, 2))
           res.end()
