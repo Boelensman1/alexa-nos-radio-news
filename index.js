@@ -1,25 +1,27 @@
+const url = require('url')
 const http = require('http')
 const fetch = require('node-fetch')
 const x = require('x-ray')()
 
-// Template of what will be returned,
+// Base JSON Template of what will be returned,
 // is modified by updateDate and send on every request
 const jsonTemplate = {
   titleText: 'N.O.S. Radio News',
   mainText: '',
   redirectionUrl: 'http://nos.nl/nieuws/',
+  streamUrl: url.resolve(process.env.BASE_URL || '', '/stream'),
 }
 
 let audioFile = ''
 let lastUpdate = new Date(0)
 
 /**
- * Fetch the last modified date from the nos servers
- * and use it as the updateDate in the json
+ * Fetch the latest news from the NOS servers
  *
- * @returns {Promise<object>}
+ * @returns {Promise<void>}
  */
-async function getJson() {
+async function updateAudio() {
+  // don't update if we last updated less then a minute ago
   if (Date.now() - lastUpdate > 1 * 60 * 1000) {
     const streamUrlHex64 = await x(
       'https://www.nporadio1.nl/gemist',
@@ -27,20 +29,11 @@ async function getJson() {
     )
     const audioUrl = Buffer.from(streamUrlHex64, 'base64').toString()
     const newAudioFile = await fetch(audioUrl).then((res) => res.buffer())
+    // only update if we succesfully fetched
     if (newAudioFile.length > 100) {
-      // check if succesfully fetched
       audioFile = newAudioFile
       lastUpdate = new Date()
     }
-  }
-
-  return {
-    ...jsonTemplate,
-    // last modified is now
-    updateDate: lastUpdate.toISOString(),
-    // why not use the date as the unique identifier too, dates are unique
-    uid: lastUpdate,
-    streamUrl: '/stream',
   }
 }
 
@@ -51,20 +44,27 @@ async function main() {
     .createServer(async (req, res) => {
       switch (req.url) {
         case '/':
-          // get the latest news
-          const json = await getJson() // eslint-disable-line no-case-declarations
+          await updateAudio() // get the latest news
           res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.write(JSON.stringify(json, null, 2))
+          res.write(
+            JSON.stringify({
+              ...jsonTemplate,
+              updateDate: lastUpdate.toISOString(),
+              // why not use the date as the unique identifier too
+              // unix timestamps should be unique
+              uid: lastUpdate.getTime(),
+            }),
+          )
           res.end()
           break
         case '/stream':
           res.writeHead(200, { 'Content-Type': 'audio/mpeg' })
+          // stream the latest saved audio
           res.write(audioFile, 'binary')
           res.end(null, 'binary')
           break
         default:
-          res.writeHead(200, { 'Content-Type': 'application/json' })
-          res.write(JSON.stringify({ error: 'unknown endpoint' }, null, 2))
+          res.writeHead(404)
           res.end()
           break
       }
