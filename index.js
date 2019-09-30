@@ -1,6 +1,4 @@
 const http = require('http')
-const https = require('https') // for the requests
-const url = require('url')
 const x = require('x-ray')()
 
 // Template of what will be returned,
@@ -12,48 +10,10 @@ const jsonTemplate = {
 }
 
 /**
- * Get the headers from a url, following redirects
- *
- * @param {string} location The url to fetch the headers from
- * @param {number} redirects The amount of redirects followed
- * @returns {Promise} Resolves into the headers
- */
-function getHeaders(location, redirects) {
-  if (redirects > 20) {
-    throw new Error('Too many redirects.')
-  }
-
-  return new Promise((resolve) => {
-    // parse the url so we can use it in our request
-    const parsed = url.parse(location)
-
-    const options = {
-      method: 'HEAD', // we only need the headers
-      hostname: parsed.hostname,
-      port: parsed.port,
-      path: parsed.path,
-    }
-    https
-      .request(options, (res) => {
-        if (res.headers.location) {
-          // redirect!
-          if (!redirects) {
-            redirects = 0
-          }
-          resolve(getHeaders(res.headers.location, redirects + 1))
-          return
-        }
-        resolve(res.headers)
-      })
-      .end()
-  })
-}
-
-/**
  * Fetch the last modified date from the nos servers
  * and use it as the updateDate in the json
  *
- * @returns {undefined}
+ * @returns {Promise<object>}
  */
 async function getJson() {
   const streamUrlHex64 = await x(
@@ -62,13 +22,12 @@ async function getJson() {
   )
   const streamUrl = Buffer.from(streamUrlHex64, 'base64').toString()
 
-  const headers = await getHeaders(streamUrl)
   return {
     ...jsonTemplate,
-    // last modified of the mp3 is of course the updateDate of the broadcast
-    updateDate: new Date(headers['last-modified']),
+    // last modified is now
+    updateDate: Date.now(),
     // why not use the date as the unique identifier too, dates are unique
-    uid: jsonTemplate.updateDate,
+    uid: Date.now(),
     streamUrl,
   }
 }
