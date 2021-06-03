@@ -1,7 +1,7 @@
 const url = require('url')
 const http = require('http')
 const fetch = require('node-fetch')
-const x = require('x-ray')()
+const puppeteer = require('puppeteer')
 
 // Base JSON Template of what will be returned,
 // is modified by updateDate and send on every request
@@ -15,19 +15,76 @@ const jsonTemplate = {
 let audioFile = ''
 let lastUpdate = new Date(0)
 
+const promiseWithTimeout = (timeoutMs, promise) => {
+  let timeoutHandle
+  const timeoutPromise = new Promise((resolve, reject) => {
+    timeoutHandle = setTimeout(
+      () => reject(new Error('Promise timed out')),
+      timeoutMs,
+    )
+  })
+
+  return Promise.race([promise(), timeoutPromise]).then((result) => {
+    clearTimeout(timeoutHandle)
+    return result
+  })
+}
+
+const getAudioFileLocationPromise = async (page) => {
+  await page.setRequestInterception(true)
+
+  return () =>
+    new Promise((resolve) => {
+      page.on('request', (interceptedRequest) => {
+        const url = interceptedRequest.url()
+        if (url.endsWith('bulalg.mp3')) {
+          // it's the audio file!
+          resolve(url)
+        }
+        interceptedRequest.continue()
+      })
+    })
+}
+
 /**
  * Fetch the latest news from the NOS servers
  *
  * @returns {Promise<void>}
  */
 async function updateAudio() {
-  // don't update if we last updated less then a minute ago
-  if (Date.now() - lastUpdate > 1 * 60 * 1000) {
-    const streamUrlHex64 = await x(
-      'https://www.nporadio1.nl/gemist',
-      '.js-playlist-latest-news@data-js-source',
-    )
-    const audioUrl = Buffer.from(streamUrlHex64, 'base64').toString()
+  // don't update if we last updated less then 5 minutes ago
+  if (Date.now() - lastUpdate > 5 * 60 * 1000) {
+    const browser = await puppeteer.launch({
+      headless: false,
+      slowMo: 250, // slow down by 250ms
+      // viewport has to be big enough that 'laatste journaal button is visible'
+      // as it is not visible on mobile
+      defaultViewport: false,
+      args: ['--disable-features=site-per-process'],
+      /*
+      defaultViewport: {
+        width: 1440,
+        height: 9000,
+      },
+      */
+    })
+    const page = await browser.newPage()
+    await page.goto('https://www.nporadio1.nl/uitzendingen', {
+      waitUntil: 'networkidle2',
+    })
+
+    const audioFileLocationPromise = await getAudioFileLocationPromise(page)
+
+    const [button] = await page.$x("//a[contains(., 'Laatste journaal')]")
+    if (button) {
+      await button.click({
+        waitUntil: 'networkidle2',
+      })
+    }
+
+    const audioUrl = await promiseWithTimeout(5000, audioFileLocationPromise)
+    await browser.close()
+
     const newAudioFile = await fetch(audioUrl).then((res) => res.buffer())
     // only update if we succesfully fetched
     if (newAudioFile.length > 100) {
@@ -74,4 +131,5 @@ async function main() {
   console.log('Server listening on port', port)
 }
 
-main()
+// main()
+updateAudio()
