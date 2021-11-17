@@ -55,19 +55,14 @@ async function updateAudio() {
   // don't update if we last updated less then 5 minutes ago
   if (Date.now() - lastUpdate > 5 * 60 * 1000) {
     const browser = await puppeteer.launch({
-      headless: false,
-      slowMo: 250, // slow down by 250ms
-      // viewport has to be big enough that 'laatste journaal button is visible'
-      // as it is not visible on mobile
-      defaultViewport: false,
+        executablePath: process.env.CHROME_LOCATION,
+        defaultViewport: {
+            width: 1920,
+            height: 1080,
+        },
       args: ['--disable-features=site-per-process'],
-      /*
-      defaultViewport: {
-        width: 1440,
-        height: 9000,
-      },
-      */
     })
+
     const page = await browser.newPage()
     await page.goto('https://www.nporadio1.nl/uitzendingen', {
       waitUntil: 'networkidle2',
@@ -131,5 +126,4 @@ async function main() {
   console.log('Server listening on port', port)
 }
 
-// main()
-updateAudio()
+main()
