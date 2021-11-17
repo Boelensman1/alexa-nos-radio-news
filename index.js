@@ -57,8 +57,8 @@ async function updateAudio() {
     const browser = await puppeteer.launch({
       executablePath: process.env.CHROME_LOCATION,
       defaultViewport: {
-        width: 1920,
-        height: 1080,
+        width: 1440,
+        height: 700,
       },
       args: ['--disable-features=site-per-process'],
     })
