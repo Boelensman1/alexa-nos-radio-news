@@ -54,6 +54,9 @@ const getAudioFileLocationPromise = async (page) => {
 async function updateAudio() {
   // don't update if we last updated less then 5 minutes ago
   if (Date.now() - lastUpdate > 5 * 60 * 1000) {
+    // only update once
+    lastUpdate = new Date()
+
     const browser = await puppeteer.launch({
       executablePath: process.env.CHROME_LOCATION,
       defaultViewport: {
@@ -82,7 +85,7 @@ async function updateAudio() {
       waitUntil: 'networkidle2',
     })
 
-    const audioUrl = await promiseWithTimeout(5000, audioFileLocationPromise)
+    const audioUrl = await promiseWithTimeout(20000, audioFileLocationPromise)
     await browser.close()
 
     const newAudioFile = await fetch(audioUrl).then((res) => res.buffer())
