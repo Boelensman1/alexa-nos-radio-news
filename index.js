@@ -24,7 +24,7 @@ const promiseWithTimeout = (timeoutMs, promise) => {
     )
   })
 
-  return Promise.race([promise(), timeoutPromise]).then((result) => {
+  return Promise.race([promise, timeoutPromise]).then((result) => {
     clearTimeout(timeoutHandle)
     return result
   })
@@ -55,11 +55,11 @@ async function updateAudio() {
   // don't update if we last updated less then 5 minutes ago
   if (Date.now() - lastUpdate > 5 * 60 * 1000) {
     const browser = await puppeteer.launch({
-        executablePath: process.env.CHROME_LOCATION,
-        defaultViewport: {
-            width: 1920,
-            height: 1080,
-        },
+      executablePath: process.env.CHROME_LOCATION,
+      defaultViewport: {
+        width: 1920,
+        height: 1080,
+      },
       args: ['--disable-features=site-per-process'],
     })
 
@@ -67,15 +67,20 @@ async function updateAudio() {
     await page.goto('https://www.nporadio1.nl/uitzendingen', {
       waitUntil: 'networkidle2',
     })
+    const [consentToCookie] = await page.$x(
+      "//button[contains(., 'accepteren')]",
+    )
+    await consentToCookie.click({
+      waitUntil: 'networkidle2',
+    })
+    await page.waitForXPath("//a[contains(., 'Laatste journaal')]")
 
-    const audioFileLocationPromise = await getAudioFileLocationPromise(page)
+    const audioFileLocationPromise = (await getAudioFileLocationPromise(page))()
 
     const [button] = await page.$x("//a[contains(., 'Laatste journaal')]")
-    if (button) {
-      await button.click({
-        waitUntil: 'networkidle2',
-      })
-    }
+    await button.click({
+      waitUntil: 'networkidle2',
+    })
 
     const audioUrl = await promiseWithTimeout(5000, audioFileLocationPromise)
     await browser.close()
@@ -124,6 +129,8 @@ async function main() {
     .listen(port)
   // eslint-disable-next-line no-console
   console.log('Server listening on port', port)
+
+  updateAudio() // get the latest news
 }
 
 main()
