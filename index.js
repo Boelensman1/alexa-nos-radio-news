@@ -47,25 +47,21 @@ const getAudioFileLocationPromise = async (page) => {
 }
 
 /**
- * Fetch the latest news from the NOS servers
+ * Fetch the latest audio from the NOS servers
  *
  * @returns {Promise<void>}
  */
 async function updateAudio() {
-  // don't update if we last updated less then 5 minutes ago
-  if (Date.now() - lastUpdate > 5 * 60 * 1000) {
-    // only update once
-    lastUpdate = new Date()
+  const browser = await puppeteer.launch({
+    executablePath: process.env.CHROME_LOCATION,
+    defaultViewport: {
+      width: 1440,
+      height: 700,
+    },
+    args: ['--disable-features=site-per-process'],
+  })
 
-    const browser = await puppeteer.launch({
-      executablePath: process.env.CHROME_LOCATION,
-      defaultViewport: {
-        width: 1440,
-        height: 700,
-      },
-      args: ['--disable-features=site-per-process'],
-    })
-
+  try {
     const page = await browser.newPage()
     await page.goto('https://www.nporadio1.nl/uitzendingen', {
       waitUntil: 'networkidle2',
@@ -94,7 +90,28 @@ async function updateAudio() {
       audioFile = newAudioFile
       lastUpdate = new Date()
     }
+  } catch (e) {
+    console.error(e)
+  } finally {
+    // close browser
+    await browser.close()
   }
+}
+
+/**
+ * Fetch the latest news if needed
+ *
+ * @returns {Promise<void>}
+ */
+function updateAudioIfNeeded() {
+  // don't update if we last updated less then 5 minutes ago
+  if (Date.now() - lastUpdate > 5 * 60 * 1000) {
+    // only update once
+    lastUpdate = new Date()
+
+    return updateAudio()
+  }
+  return Promise.resolve()
 }
 
 async function main() {
@@ -104,7 +121,7 @@ async function main() {
     .createServer(async (req, res) => {
       switch (req.url) {
         case '/':
-          await updateAudio() // get the latest news
+          await updateAudioIfNeeded()
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.write(
             JSON.stringify({
@@ -133,7 +150,7 @@ async function main() {
   // eslint-disable-next-line no-console
   console.log('Server listening on port', port)
 
-  updateAudio() // get the latest news
+  updateAudioIfNeeded() // get the latest news
 }
 
 main()
