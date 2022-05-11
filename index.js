@@ -72,11 +72,11 @@ async function updateAudio() {
     await consentToCookie.click({
       waitUntil: 'networkidle2',
     })
-    await page.waitForXPath("//a[contains(., 'Laatste journaal')]")
+    await page.waitForXPath("//button[contains(., 'Laatste journaal')]")
 
     const audioFileLocationPromise = (await getAudioFileLocationPromise(page))()
 
-    const [button] = await page.$x("//a[contains(., 'Laatste journaal')]")
+    const [button] = await page.$x("//button[contains(., 'Laatste journaal')]")
     await button.click({
       waitUntil: 'networkidle2',
     })
