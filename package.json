@@ -12,7 +12,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "node-fetch": "^2.6.6",
+    "node-fetch": "^2.6.7",
     "puppeteer": "^11.0.0"
   },
   "devDependencies": {
