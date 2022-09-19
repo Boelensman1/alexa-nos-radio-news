@@ -37,7 +37,7 @@ const getAudioFileLocationPromise = async (page) => {
     new Promise((resolve) => {
       page.on('request', (interceptedRequest) => {
         const url = interceptedRequest.url()
-        if (url.endsWith('bulalg.mp3')) {
+        if (url.includes('bulalg.mp3')) {
           // it's the audio file!
           resolve(url)
         }
